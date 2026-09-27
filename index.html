@@ -1856,7 +1856,26 @@ function pElder() {
     <select onchange="EF.cm=this.value;elderTable()">${cmOpts(EF.cm, 'ทุก CM')}</select>
     <select onchange="EF.cg=this.value;elderTable()">${cgOpts(EF.cg, 'ทุก CG')}</select>
     <select onchange="EF.status=this.value;elderTable()">${opts(Object.entries(ESTATUS), EF.status, 'ทุกสถานะ')}</select>
-    <span class="grow"></span>${isAdmin() ? '<button class="btn btn-o" onclick="seedImport()">⬆ นำเข้าจากไฟล์ทะเบียน (' + SEED_ELDERS.length + ' ราย)</button>' : ''}${canEdit() ? '<button class="btn" onclick="elderForm()">＋ เพิ่มผู้สูงอายุ</button>' : ''}</div><div id="elderArea"></div>`;
+    <span class="grow"></span>${isAdmin() ? '<button class="btn btn-o" onclick="seedImport()">⬆ นำเข้าจากไฟล์ทะเบียน (' + SEED_ELDERS.length + ' ราย)</button> <button class="btn btn-o" onclick="fillMissingTambon()">📍 เติมตำบลว่างเป็น ' + esc(ORG.tambon) + '</button> <button class="btn btn-o" onclick="fillMissingEnrolled()">🗓️ เติมวันที่ขึ้นทะเบียนว่าง</button>' : ''}${canEdit() ? '<button class="btn" onclick="elderForm()">＋ เพิ่มผู้สูงอายุ</button>' : ''}</div><div id="elderArea"></div>`;
+}
+async function fillMissingTambon() {
+  const targets = list(S.elders).filter(e => !e.addr || !String(e.addr).trim());
+  if (!targets.length) return toast('ทุกรายการมีข้อมูลตำบล/ที่อยู่เพิ่มเติมแล้ว');
+  if (!confirm(`พบผู้สูงอายุ ${targets.length} ราย ที่ยังไม่มีข้อมูล "ตำบล/ที่อยู่เพิ่มเติม"\nต้องการเติมค่าเป็น "${ORG.tambon}" ให้ทั้งหมดหรือไม่?`)) return;
+  try {
+    for (const e of targets) await dbSave('elders', e.id, { addr: ORG.tambon });
+    toast(`เติมตำบล "${ORG.tambon}" ให้ผู้สูงอายุ ${targets.length} ราย เรียบร้อยแล้ว`);
+  } catch (err) { toast('เกิดข้อผิดพลาด: ' + err.message, 'err'); }
+}
+const DEFAULT_ENROLLED = '2026-08-01'; // 1 สิงหาคม 2569
+async function fillMissingEnrolled() {
+  const targets = list(S.elders).filter(e => !e.enrolled || !String(e.enrolled).trim());
+  if (!targets.length) return toast('ทุกรายการมีข้อมูลวันที่ขึ้นทะเบียนแล้ว');
+  if (!confirm(`พบผู้สูงอายุ ${targets.length} ราย ที่ยังไม่มีข้อมูล "วันที่ขึ้นทะเบียน"\nต้องการเติมค่าเป็น "1 สิงหาคม 2569" ให้ทั้งหมดหรือไม่?`)) return;
+  try {
+    for (const e of targets) await dbSave('elders', e.id, { enrolled: DEFAULT_ENROLLED });
+    toast(`เติมวันที่ขึ้นทะเบียน "1 สิงหาคม 2569" ให้ผู้สูงอายุ ${targets.length} ราย เรียบร้อยแล้ว`);
+  } catch (err) { toast('เกิดข้อผิดพลาด: ' + err.message, 'err'); }
 }
 function filteredElders() {
   const D = derived();
