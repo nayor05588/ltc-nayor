@@ -654,6 +654,15 @@ th.v-act{background:#f4f8f6}
 .vf-bar #vSave{flex:1;font-weight:600;gap:8px}
 .vf-bar #vSave .vf-ic{width:22px;height:22px}
 
+/* ADL แบบปุ่มเลือกคะแนน 0-11 */
+.vf-adlg{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.vf-adlb{min-height:58px;border:1.5px solid var(--vf-fld);border-radius:14px;background:#fff;color:#3d4d47;font-size:22px;font-weight:700;line-height:1;cursor:pointer;transition:background-color .15s,border-color .15s,color .15s,transform .1s}
+.vf-adlb:hover{background:var(--vf-soft)}
+.vf-adlb:active{transform:scale(.96)}
+.vf-adlb[aria-checked=true]{border-color:var(--c,var(--p));background:var(--c,var(--p));color:#fff;box-shadow:0 4px 12px -4px rgba(23,54,46,.5)}
+.vf-adlb:focus-visible{outline:3px solid var(--gold);outline-offset:2px}
+.vf-adl-lg{margin:10px 2px 0;font-size:12.5px;color:var(--mu)}
+.vf-ph.vf-err{outline:2px solid var(--g3);outline-offset:5px;border-radius:14px}
 @media(max-width:720px){
   .vf:has(.vf-in:focus,textarea:focus) .vf-bar{display:none}
 }
@@ -663,6 +672,7 @@ th.v-act{background:#f4f8f6}
   .vf-vit{grid-template-columns:repeat(4,1fr)}
   .vf-vit .full{grid-column:span 2}
   .vf-ph{grid-template-columns:repeat(4,120px)}
+  .vf-adlg{grid-template-columns:repeat(6,1fr)}
   .vf-hd{padding:16px 22px 16px 16px}
 }
 @media(min-width:961px){
@@ -1400,8 +1410,8 @@ function visitForm() {
           <input type="hidden" id="vType" value="${esc(type)}">
           <div class="vf-seg" role="radiogroup" aria-labelledby="vTypeL">${Object.entries(VTYPES).map(([k, l]) => `<button type="button" role="radio" data-v="${k}" aria-checked="${k === type}" onclick="vfType('${k}')">${esc(l.replace(/^เยี่ยม/, ''))}</button>`).join('')}</div></div>
         ${field('วันที่เยี่ยม', inp('vDate', v.date || today(), 'date', 'max="' + today() + '" onchange="vElderChange(true)"'), '', true)}
-        ${field('เวลาเริ่มการเยี่ยม', inp('vTime', v.time || new Date().toTimeString().slice(0, 5), 'time', 'class="vf-in"'))}
-        ${field('เวลาสิ้นสุดการเยี่ยม', inp('vTimeEnd', v.timeEnd || '', 'time', 'class="vf-in"'))}
+        ${field('เวลาเริ่มการเยี่ยม', inp('vTime', v.time || new Date().toTimeString().slice(0, 5), 'time', 'class="vf-in" required'), '', true)}
+        ${field('เวลาสิ้นสุดการเยี่ยม', inp('vTimeEnd', v.timeEnd || '', 'time', 'class="vf-in" required'), '', true)}
         ${field('CM ผู้เยี่ยม', `<select id="vCm">${cmOpts(v.cmId)}</select>`, 'full')}
       </div>
     </section>
@@ -1421,25 +1431,15 @@ function visitForm() {
     </section>
 
     <section class="vf-card" id="vf-s3">
-      ${vfHead('clip', 'ประเมิน ADL', 'Barthel Index เต็ม 20', 'vfSt3')}
+      ${vfHead('clip', 'ประเมิน ADL', 'แตะเลือกคะแนน 0–11 · แตะซ้ำเพื่อยกเลิก', 'vfSt3')}
       <div class="vf-adl-sum">
-        <div><div class="vf-mini">คะแนนรวม</div><b id="adlTot">-</b></div>
-        <div class="vf-adl-r"><div id="adlGrp"></div><div class="vf-dots" aria-hidden="true">${BARTHEL.map(() => '<i></i>').join('')}</div></div>
+        <div><div class="vf-mini">คะแนน ADL</div><b id="adlTot">-</b></div>
+        <div class="vf-adl-r"><div id="adlGrp"></div></div>
         <button type="button" class="vf-lnk hide" id="adlClr" onclick="adlClear()">ล้าง</button>
       </div>
-      ${BARTHEL.map((b, i) => {
-        const en = b.en, q = b.q;
-        const cur = v.adlItems ? v.adlItems[b.k] : null, has = cur !== undefined && cur !== null;
-        return `<div class="vf-ai" id="adlI_${b.k}">
-        <button type="button" class="vf-ai-h" aria-expanded="false" onclick="adlToggle('${b.k}')">
-          <span class="vf-ai-n">${i + 1}</span>
-          <span class="vf-ai-t"><b>${esc(q)} <em class="vf-en">(${esc(en)})</em></b><small>${esc(b.h)}</small><span class="vf-ai-v" id="adlV_${b.k}"></span></span>
-          <span class="vf-ai-s" id="adlS_${b.k}"></span>${vfIc('chev', 'vf-chev')}
-        </button>
-        <div class="vf-ai-o" role="radiogroup" aria-label="${esc(q)}">${b.o.map(o => `<button type="button" class="vf-op" role="radio" aria-checked="false" data-s="${o[0]}" onclick="adlPick('${b.k}',${o[0]})"><b>${o[0]}</b><span>${esc(o[1])}</span></button>`).join('')}</div>
-        <input type="hidden" id="adl_${b.k}" value="${has ? cur : ''}">
-      </div>`;
-      }).join('')}
+      <input type="hidden" id="vAdl" value="${v.adl !== null && v.adl !== undefined && v.adl !== '' ? esc(v.adl) : ''}">
+      <div class="vf-adlg" role="radiogroup" aria-label="คะแนน ADL">${adlScores(v.adl).map(n => `<button type="button" class="vf-adlb" role="radio" aria-checked="false" data-s="${n}" style="--c:${adlGroup(n).color}" onclick="adlPick(${n})">${n}</button>`).join('')}</div>
+      <div class="vf-adl-lg">0–4 ติดเตียง · 5–11 ติดบ้าน</div>
     </section>
 
     <section class="vf-card" id="vf-s4">
@@ -1465,10 +1465,11 @@ function visitForm() {
     </section>
 
     <section class="vf-card" id="vf-s6">
-      ${vfHead('camera', 'รูปภาพและพิกัด', 'ระบบย่อรูปก่อนอัปโหลดอัตโนมัติ', 'vfSt6')}
+      ${vfHead('camera', 'รูปภาพและพิกัด', 'รูปภาพบังคับอย่างน้อย 1 รูป · พิกัดไม่บังคับ', 'vfSt6')}
       <input type="file" id="vFiles" accept="image/*" multiple hidden onchange="photoAdd(this)">
+      <div class="vf-sub" style="margin-top:0"><b>รูปภาพการเยี่ยม <i style="color:var(--g3);font-style:normal">*</i></b><span class="vf-mini">ระบบย่อรูปก่อนอัปโหลดอัตโนมัติ</span></div>
       <div class="vf-ph" id="vThumbs"></div>
-      <div class="vf-sub" style="margin-top:20px"><b>พิกัดบ้าน</b></div>
+      <div class="vf-sub" style="margin-top:20px"><b>พิกัดบ้าน</b><span class="vf-mini">ไม่บังคับ</span></div>
       <button type="button" class="vf-btn2" onclick="gps('vLat','vLng')">${vfIc('pin')}<span>ใช้ตำแหน่งปัจจุบัน</span></button>
       <div class="vf-g" style="margin-top:12px">
         ${field('ละติจูด', inp('vLat', v.lat ?? '', 'text', 'class="vf-in" inputmode="decimal"'))}${field('ลองจิจูด', inp('vLng', v.lng ?? '', 'text', 'class="vf-in" inputmode="decimal"'))}
@@ -1515,37 +1516,18 @@ function vElderChange(keep) {
   box.innerHTML = h;
 }
 
-/* ---------- ADL: เลือกทีละข้อ แตะแล้วเลื่อนไปข้อถัดไปอัตโนมัติ ---------- */
+/* ---------- ADL: ปุ่มเลือกคะแนน 0-11 (แตะซ้ำเพื่อยกเลิก) ---------- */
+const adlScores = cur => { const a = [...Array(12).keys()]; if (cur !== null && cur !== undefined && cur !== '' && !isNaN(cur) && +cur > 11) a.push(+cur); return a; }; /* ข้อมูลเก่าที่คะแนน > 11 ยังแสดงและแก้ไขได้ */
 function adlCalc() {
-  const vals = BARTHEL.map(b => $('adl_' + b.k).value), n = vals.filter(x => x !== '').length, sum = vals.reduce((a, x) => a + (x === '' ? 0 : +x), 0);
-  $('adlTot').textContent = n === 0 ? '-' : sum + ' / 20'; $('adlGrp').innerHTML = n === 10 ? adlBadge(sum) : n ? `<span class="mu">ตอบแล้ว ${n}/10 ข้อ · ต้องครบทุกข้อ</span>` : '<span class="mu">ยังไม่ได้ประเมิน · เว้นว่างได้</span>';
-  BARTHEL.forEach((b, i) => {
-    const el = $('adlI_' + b.k), x = vals[i], has = x !== '', o = b.o.find(o => String(o[0]) === x);
-    el.classList.toggle('done', has);
-    el.querySelectorAll('.vf-op').forEach(p => p.setAttribute('aria-checked', String(has && p.dataset.s === x)));
-    $('adlV_' + b.k).textContent = o ? o[1] : '';
-    $('adlS_' + b.k).textContent = has ? x + '/' + b.o[b.o.length - 1][0] : '';
-  });
-  document.querySelectorAll('.vf-dots i').forEach((d, i) => d.classList.toggle('on', vals[i] !== ''));
-  $('adlClr').classList.toggle('hide', n === 0);
-  const st = $('vfSt3'); if (st) { st.textContent = n === 10 ? 'ครบ 10 ข้อ' : n ? n + '/10 ข้อ' : 'ไม่บังคับ'; st.className = 'vf-stp' + (n === 10 ? ' ok' : ''); }
+  const x = $('vAdl').value, has = x !== '';
+  $('adlTot').textContent = has ? x : '-';
+  $('adlGrp').innerHTML = has ? adlBadge(+x) : '<span class="mu">ยังไม่ได้ประเมิน · เว้นว่างได้</span>';
+  document.querySelectorAll('.vf-adlb').forEach(p => p.setAttribute('aria-checked', String(has && p.dataset.s === x)));
+  $('adlClr').classList.toggle('hide', !has);
+  const st = $('vfSt3'); if (st) { st.textContent = has ? 'ประเมินแล้ว' : 'ไม่บังคับ'; st.className = 'vf-stp' + (has ? ' ok' : ''); }
 }
-function adlToggle(k, force) {
-  BARTHEL.forEach(b => {
-    const el = $('adlI_' + b.k), open = b.k === k ? (force !== undefined ? force : !el.classList.contains('open')) : false;
-    el.classList.toggle('open', open); el.querySelector('.vf-ai-h').setAttribute('aria-expanded', String(open));
-  });
-}
-function adlPick(k, s) {
-  const h = $('adl_' + k); h.value = h.value === String(s) ? '' : String(s); adlCalc();
-  if (h.value === '') return;
-  const i = BARTHEL.findIndex(b => b.k === k), nx = BARTHEL.slice(i + 1).concat(BARTHEL.slice(0, i)).find(b => $('adl_' + b.k).value === '');
-  setTimeout(() => { if (nx) { adlToggle(nx.k, true); vfScroll($('adlI_' + nx.k)); } else adlToggle(k, false); }, 180);
-}
-async function adlClear() {
-  if (!await ask('ล้างคะแนน ADL ทั้ง 10 ข้อ?', 'ล้างคะแนน')) return;
-  BARTHEL.forEach(b => { $('adl_' + b.k).value = ''; }); adlCalc(); adlToggle(BARTHEL[0].k, true);
-}
+function adlPick(n) { const h = $('vAdl'); h.value = h.value === String(n) ? '' : String(n); adlCalc(); }
+function adlClear() { $('vAdl').value = ''; adlCalc(); }
 function vfCount() {
   const p = chk('vProb').length, c = chk('vCare').length;
   [['vProbN', p], ['vCareN', c]].forEach(([id, n]) => { const el = $(id); if (el) { el.textContent = 'เลือก ' + n; el.classList.toggle('hide', !n); } });
@@ -1586,11 +1568,6 @@ function vfFail(msg, id) {
   const box = el.closest('.f') || el; box.classList.add('vf-err');
   box.scrollIntoView({ behavior: 'smooth', block: 'center' }); if (el.type !== 'hidden') el.focus({ preventScroll: true });
 }
-function vfAdlFail() {
-  toast('กรุณาประเมิน ADL ให้ครบ 10 ข้อ หรือเว้นว่างทั้งหมด', 'err');
-  const miss = BARTHEL.find(b => $('adl_' + b.k).value === ''); if (!miss) return;
-  adlToggle(miss.k, true); vfScroll($('adlI_' + miss.k));
-}
 
 function photoAdd(inputEl) {
   const room = 4 - VPH.keep.length - VPH.files.length;
@@ -1607,27 +1584,31 @@ function photoPreview() {
   t.innerHTML = VPH.keep.map((u, i) => th(esc(u), `VPH.keep.splice(${i},1);photoPreview()`, i + 1)).join('') +
     VPH.files.map((f, i) => th(url(f), `VPH.files.splice(${i},1);photoPreview()`, k + i + 1)).join('') +
     (tot < 4 ? `<button type="button" class="vf-add" onclick="$('vFiles').click()">${vfIc('plus')}<span>เพิ่มรูป</span></button>` : '');
-  const st = $('vfSt6'); if (st) { st.textContent = tot + '/4 รูป'; st.className = 'vf-stp' + (tot ? ' ok' : ''); }
+  if (tot) t.classList.remove('vf-err');
+  const st = $('vfSt6'); if (st) { st.textContent = tot ? tot + '/4 รูป' : 'บังคับ ≥ 1 รูป'; st.className = 'vf-stp' + (tot ? ' ok' : ''); }
 }
 async function saveVisit() {
   if (!canEdit()) return;
   const elderId = val('vElder'), date = val('vDate');
   if (!elderId) return vfFail('กรุณาเลือกผู้สูงอายุ', 'vElder');
   if (!date) return vfFail('กรุณาระบุวันที่เยี่ยม', 'vDate__v');
-  const vals = BARTHEL.map(b => $('adl_' + b.k).value), n = vals.filter(x => x !== '').length;
-  if (n > 0 && n < 10) return vfAdlFail();
-  const adlItems = {}; if (n === 10) BARTHEL.forEach((b, i) => adlItems[b.k] = +vals[i]);
-  const adl = n === 10 ? vals.reduce((a, x) => a + +x, 0) : null;
+  const tStart = val('vTime'), tEnd = val('vTimeEnd');
+  if (!tStart) return vfFail('กรุณาระบุเวลาเริ่มการเยี่ยม', 'vTime');
+  if (!tEnd) return vfFail('กรุณาระบุเวลาสิ้นสุดการเยี่ยม', 'vTimeEnd');
+  if (tEnd <= tStart) return vfFail('เวลาสิ้นสุดต้องหลังเวลาเริ่มการเยี่ยม', 'vTimeEnd');
+  if (VPH.keep.length + VPH.files.length < 1) return vfFail('กรุณาแนบรูปภาพการเยี่ยมอย่างน้อย 1 รูป', 'vThumbs');
+  const adlRaw = val('vAdl'), adl = adlRaw === '' ? null : +adlRaw, old = visitEditing ? S.visits[visitEditing] : null;
+  const adlItems = old && old.adl === adl && old.adlItems ? old.adlItems : null; /* คงคะแนนรายข้อเดิมไว้ ถ้าไม่ได้เปลี่ยนคะแนนรวม */
   const btn = $('vSave'); btn.disabled = true; btn.textContent = 'กำลังบันทึก...';
   try {
     const urls = [...VPH.keep];
     for (let i = 0; i < VPH.files.length; i++) { btn.textContent = `อัปโหลดรูป ${i + 1}/${VPH.files.length}...`; urls.push(await uploadImg(VPH.files[i])); }
     const refer = $('vRefer').checked;
     const data = {
-      elderId, date, time: val('vTime'), timeEnd: val('vTimeEnd'), type: val('vType'), cmId: val('vCm'), cgId: val('vCg'),
+      elderId, date, time: tStart, timeEnd: tEnd, type: val('vType'), cmId: val('vCm'), cgId: val('vCg'),
       sys: numOrNull(val('vSys')), dia: numOrNull(val('vDia')), pulse: numOrNull(val('vPulse')), temp: numOrNull(val('vTemp')), rr: numOrNull(val('vRr')),
       spo2: numOrNull(val('vSpo2')), wt: numOrNull(val('vWt')), dtx: numOrNull(val('vDtx')),
-      adl, adlItems: n === 10 ? adlItems : null, problems: chk('vProb'), care: chk('vCare'),
+      adl, adlItems, problems: chk('vProb'), care: chk('vCare'),
       note: val('vNote'), equip: val('vEquip'), plan: val('vPlan'), nextDate: val('vNext'), refer, referTo: refer ? val('vReferTxt') : '',
       photos: urls, lat: val('vLat'), lng: val('vLng')
     };
