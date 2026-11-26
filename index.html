@@ -506,6 +506,15 @@ body:has(.vf) #toast-root{bottom:calc(88px + env(safe-area-inset-bottom,0px))}
 .vf .dp-v{padding-right:42px}
 .vf .dp{display:block}
 .vf .f.vf-err select,.vf .f.vf-err .dp-v,.vf .f.vf-err .vf-in{border-color:var(--g3);box-shadow:0 0 0 4px rgba(204,75,60,.15)}
+.vf .f.vf-err>span{color:var(--g3)}
+.vf-alt{text-align:center;padding:24px 22px 8px}
+.vf-alt-ic{width:52px;height:52px;margin:0 auto 12px;border-radius:50%;background:#fdecea;color:var(--g3);display:grid;place-items:center;font-size:28px;font-weight:700}
+.vf-alt h3{font-size:19px;margin:0 0 6px}
+.vf-alt p{margin:0 0 12px;color:#55645e;font-size:15px}
+.vf-alt p i,.vf-alt li i{color:var(--g3);font-style:normal;font-weight:700}
+.vf-alt ul{list-style:none;margin:0;padding:0;text-align:left;display:grid;gap:8px}
+.vf-alt li{background:#fdf3f1;border:1px solid #f3c9c3;border-radius:10px;padding:9px 12px;font-size:15px;color:#7a2a20}
+.mdl.sm .mf.vf-alt-f{justify-content:center}
 .vf .vf-in[type=number]{-moz-appearance:textfield}
 .vf .vf-in[type=number]::-webkit-outer-spin-button,.vf .vf-in[type=number]::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
 
@@ -1563,6 +1572,30 @@ function vfInit() {
   ['input', 'change'].forEach(ev => root.addEventListener(ev, e => { const b = e.target.closest && e.target.closest('.vf-err'); if (b) b.classList.remove('vf-err'); }));
   vfOnScroll();
 }
+let vfAlerting = false;
+/* แสดงหน้าต่างแจ้งเตือนช่องที่ยังไม่กรอก; เมื่อกดปิด เลื่อนหน้าไปยังช่องแรกที่ยังไม่กรอก */
+function vfAlert(list) {
+  if (vfAlerting) return;
+  vfAlerting = true;
+  const first = list[0];
+  list.forEach(it => { const el = $(it.id); if (el) (el.closest('.f') || el).classList.add('vf-err'); });
+  const d = document.createElement('div'); d.className = 'ov top'; d.id = 'vfAlertOv';
+  d.innerHTML = `<div class="mdl sm" role="alertdialog" aria-modal="true" aria-labelledby="vfAltT"><div class="mb vf-alt"><div class="vf-alt-ic" aria-hidden="true">!</div><h3 id="vfAltT">ไม่สามารถบันทึกได้</h3><p>กรุณากรอกหรือแก้ไขข้อมูลต่อไปนี้ให้ถูกต้อง ช่องที่มีเครื่องหมาย <i>*</i> จำเป็นต้องกรอก</p><ul>${list.map(it => `<li>${it.warn ? '' : '<i>*</i> '}${esc(it.msg)}</li>`).join('')}</ul></div><div class="mf vf-alt-f"><button type="button" class="btn" id="vfAltOk">ตกลง</button></div></div>`;
+  const close = () => {
+    d.remove(); document.removeEventListener('keydown', onKey); vfAlerting = false;
+    const el = $(first.id); if (!el) return;
+    const box = el.closest('.f') || el;
+    setTimeout(() => {
+      box.scrollIntoView({ behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'center' });
+      if (el.type !== 'hidden' && el.focus) el.focus({ preventScroll: true });
+    }, 30);
+  };
+  const onKey = e => { if (e.key === 'Escape' || e.key === 'Enter') { e.preventDefault(); close(); } };
+  d.onclick = e => { if (e.target === d || e.target.closest('#vfAltOk')) close(); };
+  document.addEventListener('keydown', onKey);
+  document.body.appendChild(d);
+  const ok = $('vfAltOk'); if (ok) ok.focus();
+}
 function vfFail(msg, id) {
   toast(msg, 'err');
   const el = $(id); if (!el) return;
@@ -1590,14 +1623,15 @@ function photoPreview() {
 }
 async function saveVisit() {
   if (!canEdit()) return;
-  const elderId = val('vElder'), date = val('vDate');
-  if (!elderId) return vfFail('กรุณาเลือกผู้สูงอายุ', 'vElder');
-  if (!date) return vfFail('กรุณาระบุวันที่เยี่ยม', 'vDate__v');
-  const tStart = val('vTime'), tEnd = val('vTimeEnd');
-  if (!tStart) return vfFail('กรุณาระบุเวลาเริ่มการเยี่ยม', 'vTime');
-  if (!tEnd) return vfFail('กรุณาระบุเวลาสิ้นสุดการเยี่ยม', 'vTimeEnd');
-  if (tEnd <= tStart) return vfFail('เวลาสิ้นสุดต้องหลังเวลาเริ่มการเยี่ยม', 'vTimeEnd');
-  if (VPH.keep.length + VPH.files.length < 1) return vfFail('กรุณาแนบรูปภาพการเยี่ยมอย่างน้อย 1 รูป', 'vThumbs');
+  const elderId = val('vElder'), date = val('vDate'), tStart = val('vTime'), tEnd = val('vTimeEnd');
+  const miss = [];
+  if (!elderId) miss.push({ id: 'vElder', msg: 'กรุณาเลือกผู้สูงอายุ' });
+  if (!date) miss.push({ id: 'vDate__v', msg: 'กรุณาระบุวันที่เยี่ยม' });
+  if (!tStart) miss.push({ id: 'vTime', msg: 'กรุณาระบุเวลาเริ่มการเยี่ยม' });
+  if (!tEnd) miss.push({ id: 'vTimeEnd', msg: 'กรุณาระบุเวลาสิ้นสุดการเยี่ยม' });
+  else if (tStart && tEnd <= tStart) miss.push({ id: 'vTimeEnd', msg: 'เวลาสิ้นสุดต้องหลังเวลาเริ่มการเยี่ยม', warn: true });
+  if (VPH.keep.length + VPH.files.length < 1) miss.push({ id: 'vThumbs', msg: 'กรุณาแนบรูปภาพการเยี่ยมอย่างน้อย 1 รูป' });
+  if (miss.length) return vfAlert(miss);
   const adlRaw = val('vAdl'), adl = adlRaw === '' ? null : +adlRaw, old = visitEditing ? S.visits[visitEditing] : null;
   const adlItems = old && old.adl === adl && old.adlItems ? old.adlItems : null; /* คงคะแนนรายข้อเดิมไว้ ถ้าไม่ได้เปลี่ยนคะแนนรวม */
   const btn = $('vSave'); btn.disabled = true; btn.textContent = 'กำลังบันทึก...';
