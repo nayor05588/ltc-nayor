@@ -1420,8 +1420,8 @@ function visitForm() {
           <input type="hidden" id="vType" value="${esc(type)}">
           <div class="vf-seg" role="radiogroup" aria-labelledby="vTypeL">${Object.entries(VTYPES).map(([k, l]) => `<button type="button" role="radio" data-v="${k}" aria-checked="${k === type}" onclick="vfType('${k}')">${esc(l.replace(/^เยี่ยม/, ''))}</button>`).join('')}</div></div>
         ${field('วันที่เยี่ยม', inp('vDate', v.date || today(), 'date', 'max="' + today() + '" onchange="vElderChange(true)"'), '', true)}
-        ${field('เวลาเริ่มการเยี่ยม', inp('vTime', v.time || new Date().toTimeString().slice(0, 5), 'time', 'class="vf-in" required'), '', true)}
-        ${field('เวลาสิ้นสุดการเยี่ยม', inp('vTimeEnd', v.timeEnd || '', 'time', 'class="vf-in" required'), '', true)}
+        ${field('เวลาเริ่มการเยี่ยม', inp('vTime', v.time || new Date().toTimeString().slice(0, 5), 'text', 'class=\"vf-in\" required ' + VT_ATTR), '', true)}
+        ${field('เวลาสิ้นสุดการเยี่ยม', inp('vTimeEnd', v.timeEnd || '', 'text', 'class=\"vf-in\" required ' + VT_ATTR), '', true)}
         ${field('CM ผู้เยี่ยม', `<select id="vCm">${cmOpts(v.cmId)}</select>`, 'full')}
       </div>
     </section>
@@ -1621,14 +1621,32 @@ function photoPreview() {
   if (tot) t.classList.remove('vf-err');
   const st = $('vfSt6'); if (st) { st.textContent = tot ? tot + '/4 รูป' : 'บังคับ ≥ 1 รูป'; st.className = 'vf-stp' + (tot ? ' ok' : ''); }
 }
+// ช่องเวลาแบบพิมพ์ตัวเลขตรง (ไม่เปิดนาฬิกา) รูปแบบ HH:MM
+const VT_ATTR = 'inputmode="numeric" maxlength="5" placeholder="เช่น 09:30" autocomplete="off" oninput="vtInput(this)" onblur="vtBlur(this)"';
+function vtInput(el) {
+  const d = el.value.replace(/\D/g, '').slice(0, 4);
+  el.value = d.length > 2 ? d.slice(0, 2) + ':' + d.slice(2) : d;
+}
+function vtNorm(raw) {
+  const d = String(raw || '').replace(/\D/g, '');
+  if (!d) return '';
+  let h, m;
+  if (d.length <= 2) { h = d; m = '00'; }
+  else if (d.length === 3) { h = '0' + d[0]; m = d.slice(1); }
+  else { h = d.slice(0, 2); m = d.slice(2, 4); }
+  h = +h; m = +m;
+  if (h > 23 || m > 59) return '';
+  return String(h).padStart(2, '0') + ':' + String(m).padStart(2, '0');
+}
+function vtBlur(el) { if (el.value.trim()) el.value = vtNorm(el.value); }
 async function saveVisit() {
   if (!canEdit()) return;
-  const elderId = val('vElder'), date = val('vDate'), tStart = val('vTime'), tEnd = val('vTimeEnd');
+  const elderId = val('vElder'), date = val('vDate'), tStart = vtNorm(val('vTime')), tEnd = vtNorm(val('vTimeEnd'));
   const miss = [];
   if (!elderId) miss.push({ id: 'vElder', msg: 'กรุณาเลือกผู้สูงอายุ' });
   if (!date) miss.push({ id: 'vDate__v', msg: 'กรุณาระบุวันที่เยี่ยม' });
-  if (!tStart) miss.push({ id: 'vTime', msg: 'กรุณาระบุเวลาเริ่มการเยี่ยม' });
-  if (!tEnd) miss.push({ id: 'vTimeEnd', msg: 'กรุณาระบุเวลาสิ้นสุดการเยี่ยม' });
+  if (!tStart) miss.push({ id: 'vTime', msg: 'กรุณาระบุเวลาเริ่มการเยี่ยมให้ถูกต้อง (เช่น 09:30)' });
+  if (!tEnd) miss.push({ id: 'vTimeEnd', msg: 'กรุณาระบุเวลาสิ้นสุดการเยี่ยมให้ถูกต้อง (เช่น 10:15)' });
   else if (tStart && tEnd <= tStart) miss.push({ id: 'vTimeEnd', msg: 'เวลาสิ้นสุดต้องหลังเวลาเริ่มการเยี่ยม', warn: true });
   if (VPH.keep.length + VPH.files.length < 1) miss.push({ id: 'vThumbs', msg: 'กรุณาแนบรูปภาพการเยี่ยมอย่างน้อย 1 รูป' });
   if (miss.length) return vfAlert(miss);
